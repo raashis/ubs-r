@@ -2,7 +2,7 @@ import json
 import logging
 import heapq
 from collections import defaultdict
-from routes import app  # <-- use the app from init.py
+from routes import app  
 from flask import request
 
 logger = logging.getLogger(__name__)
