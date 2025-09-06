@@ -1,26 +1,23 @@
-from flask import Flask, request, jsonify
-from collections import defaultdict
+# routes/surveillance.py
 
-app = Flask(__name__)
+from flask import Blueprint, request, jsonify
+
+surveillance = Blueprint('surveillance', __name__)
 
 class UnionFind:
     def __init__(self, spies):
-        # Create a parent map for each spy
         self.parent = {spy: spy for spy in spies}
-        # Create a rank map to optimize union
         self.rank = {spy: 0 for spy in spies}
     
     def find(self, spy):
-        # Path compression
         if self.parent[spy] != spy:
             self.parent[spy] = self.find(self.parent[spy])
         return self.parent[spy]
     
     def union(self, spy1, spy2):
-        # Union by rank
         root1 = self.find(spy1)
         root2 = self.find(spy2)
-        
+
         if root1 != root2:
             if self.rank[root1] > self.rank[root2]:
                 self.parent[root2] = root1
@@ -32,7 +29,7 @@ class UnionFind:
             return False  # No cycle formed
         return True  # Cycle detected
 
-@app.route('/investigate', methods=['POST'])
+@surveillance.route('/investigate', methods=['POST'])
 def investigate():
     data = request.json
     
@@ -63,6 +60,3 @@ def investigate():
         })
     
     return jsonify(result)
-
-if __name__ == '__main__':
-    app.run(debug=True)
