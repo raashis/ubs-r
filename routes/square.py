@@ -1,14 +1,11 @@
 import json
 import logging
-
+import pandas as pd
 from flask import request
-
 from routes import app
 
 logger = logging.getLogger(__name__)
 
-
-@app.route('/blankety', methods=['POST'])
 def impute_series(series):
     s = pd.Series(series, dtype="float")
     # Linear interpolation + fill edges
