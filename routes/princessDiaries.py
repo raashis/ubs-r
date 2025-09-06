@@ -2,10 +2,11 @@ import json
 import logging
 import heapq
 from collections import defaultdict
-from flask import Flask, request
+from routes import app  # <-- use the app from init.py
+from flask import request
 
-app = Flask(__name__)
 logger = logging.getLogger(__name__)
+
 
 def dijkstra(n, graph, src):
     dist = [float("inf")] * n
@@ -33,27 +34,21 @@ def build_distance_matrix(subway):
         stations.add(u)
         stations.add(v)
 
-    n = max(stations) + 1 
-    dist_matrix = [dijkstra(n, graph, i) for i in range(n)]
-    return dist_matrix
+    n = max(stations) + 1
+    return [dijkstra(n, graph, i) for i in range(n)]
+
 
 def weighted_interval(tasks, dist_matrix, start_station):
+    import bisect
     tasks = sorted(tasks, key=lambda t: t["end"])
     n = len(tasks)
-
-    import bisect
     ends = [t["end"] for t in tasks]
-    p = []
-    for i in range(n):
-        j = bisect.bisect_right(ends, tasks[i]["start"]) - 1
-        p.append(j)
-
-    dp = [(0, 0, [])] * (n + 1)  
+    p = [bisect.bisect_right(ends, tasks[i]["start"]) - 1 for i in range(n)]
+    dp = [(0, 0, [])] * (n + 1)
 
     for i in range(1, n + 1):
         task = tasks[i - 1]
         name, score, station = task["name"], task["score"], task["station"]
-
         best = dp[i - 1]
 
         prev_score, prev_fee, prev_schedule = dp[p[i - 1] + 1]
@@ -79,7 +74,6 @@ def weighted_interval(tasks, dist_matrix, start_station):
         dp[i] = best
 
     return dp[n]
-
 
 
 @app.route('/princessDiaries', methods=['POST'])
