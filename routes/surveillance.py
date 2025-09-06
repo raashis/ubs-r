@@ -1,9 +1,10 @@
 import logging
 from collections import defaultdict, Counter, deque
 from flask import request, jsonify
-from routes import app
+from routes import app  # use the single app instance
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 def would_create_cycle(keep_adj, u, v):
@@ -13,7 +14,6 @@ def would_create_cycle(keep_adj, u, v):
     """
     if u == v:
         return True
-    # BFS/DFS from v to see if we can reach u
     q = deque([v])
     seen = {v}
     while q:
@@ -29,7 +29,7 @@ def would_create_cycle(keep_adj, u, v):
 
 @app.route('/investigate', methods=['POST'])
 def investigate():
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(force=True)  # ensures JSON is parsed
     networks = payload.get("networks", [])
     out = {"networks": []}
 
@@ -40,15 +40,11 @@ def investigate():
         # Normalize edges as (u, v)
         E = [(e.get("spy1"), e.get("spy2")) for e in edges if e.get("spy1") and e.get("spy2")]
 
-        # Stats to guide greedy keep/cut
-        # Prefer keeping edges whose target is rare (helps preserve unique connections).
+        # Frequency of targets for deterministic sorting
         target_freq = Counter(v for _, v in E)
-
         # Sort edges: 1) ascending target frequency, 2) source name, 3) target name
-        # (So we keep edges to rare targets first; ties are stable & deterministic.)
         E_sorted = sorted(E, key=lambda ev: (target_freq[ev[1]], ev[0], ev[1]))
 
-        # Degree constraints and kept graph
         indeg = defaultdict(int)
         outdeg = defaultdict(int)
         keep_adj = defaultdict(list)
@@ -78,5 +74,7 @@ def investigate():
             "networkId": net_id,
             "extraChannels": extras
         })
+
+        logger.info(f"Processed networkId {net_id}: {len(E)} edges, {len(extras)} extra channels")
 
     return jsonify(out)
