@@ -1,25 +1,39 @@
 from flask import Blueprint, request, jsonify
+from collections import defaultdict
 
 surveillance = Blueprint('surveillance', __name__)
 
-class UnionFind:
-    def __init__(self):
-        self.parent = {}
+def find_cycles(n, edges):
+    graph = defaultdict(list)
+    visited = set()
+    parent = {}
 
-    def find(self, x):
-        if x not in self.parent:
-            self.parent[x] = x
-        if self.parent[x] != x:
-            self.parent[x] = self.find(self.parent[x])
-        return self.parent[x]
+    cycle_edges = set()
 
-    def union(self, x, y):
-        rootX = self.find(x)
-        rootY = self.find(y)
-        if rootX == rootY:
-            return False
-        self.parent[rootY] = rootX
-        return True
+    def dfs(node, par):
+        visited.add(node)
+        for nei in graph[node]:
+            if nei == par:
+                continue
+            if nei not in visited:
+                parent[nei] = node
+                dfs(nei, node)
+            else:
+                # back edge = cycle
+                u, v = node, nei
+                if (min(u, v), max(u, v)) not in cycle_edges:
+                    cycle_edges.add((min(u, v), max(u, v)))
+
+    for u, v in edges:
+        graph[u].append(v)
+        graph[v].append(u)
+
+    for node in graph:
+        if node not in visited:
+            parent[node] = None
+            dfs(node, None)
+
+    return cycle_edges
 
 
 @surveillance.route('/investigate', methods=['POST'])
@@ -31,31 +45,21 @@ def investigate():
         network_id = network_obj["networkId"]
         connections = network_obj["network"]
 
-        uf = UnionFind()
-        nodes = set()
-        for edge in connections:
-            nodes.add(edge["spy1"])
-            nodes.add(edge["spy2"])
+        edges = [(edge["spy1"], edge["spy2"]) for edge in connections]
 
-        needed_edges = len(nodes) - 1
-        kept_edges = []
+        # find all cycle edges
+        cycle_edges = find_cycles(len(connections), edges)
+
         extra_channels = []
-
-        for edge in connections:
-            spy1, spy2 = edge["spy1"], edge["spy2"]
+        for spy1, spy2 in edges:
             normalized_edge = {
                 "spy1": min(spy1, spy2),
                 "spy2": max(spy1, spy2)
             }
-
-            # keep building spanning tree until n-1 edges chosen
-            if len(kept_edges) < needed_edges and uf.union(spy1, spy2):
-                kept_edges.append(normalized_edge)
-            else:
-                # every other edge is extra
+            if (normalized_edge["spy1"], normalized_edge["spy2"]) in cycle_edges:
                 extra_channels.append(normalized_edge)
 
-        # sort for deterministic output
+        # sort for determinism
         extra_channels.sort(key=lambda e: (e["spy1"], e["spy2"]))
 
         results.append({
