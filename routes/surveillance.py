@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 
-spy_network_bp = Blueprint('spy_network', __name__)
+surveillance_bp = Blueprint('surveillance', __name__)
 
 class UnionFind:
     def __init__(self):
@@ -22,7 +22,7 @@ class UnionFind:
         return True
 
 
-@spy_network_bp.route('/investigate', methods=['POST'])
+@surveillance_bp.route('/investigate', methods=['POST'])
 def investigate():
     data = request.get_json()
 
