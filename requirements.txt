@@ -10,3 +10,6 @@ packaging==23.1
 Werkzeug==2.3.7
 pandas
 Flask
+word2number
+cn2an
+
