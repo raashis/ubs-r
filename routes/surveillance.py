@@ -21,6 +21,7 @@ class UnionFind:
         self.parent[rootY] = rootX
         return True
 
+
 @surveillance.route('/investigate', methods=['POST'])
 def investigate():
     data = request.get_json()
@@ -37,15 +38,17 @@ def investigate():
             spy1 = edge["spy1"]
             spy2 = edge["spy2"]
 
-            if not uf.union(spy1, spy2):
-                # ✅ Normalize the edge order
-                ordered_edge = {
-                    "spy1": min(spy1, spy2),
-                    "spy2": max(spy1, spy2)
-                }
-                extra_channels.append(ordered_edge)
+            # normalize order for consistency
+            normalized_edge = {
+                "spy1": min(spy1, spy2),
+                "spy2": max(spy1, spy2)
+            }
 
-        # ✅ Optional: Sort the edges to match expected output
+            # if already connected, this edge is extra
+            if not uf.union(spy1, spy2):
+                extra_channels.append(normalized_edge)
+
+        # sort for deterministic output
         extra_channels.sort(key=lambda e: (e["spy1"], e["spy2"]))
 
         results.append({
