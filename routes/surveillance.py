@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 
-surveillance_bp = Blueprint('surveillance', __name__)
+surveillance = Blueprint('surveillance', __name__)  # ✅ This is the name you're using
 
 class UnionFind:
     def __init__(self):
@@ -17,16 +17,15 @@ class UnionFind:
         rootX = self.find(x)
         rootY = self.find(y)
         if rootX == rootY:
-            return False  # Cycle detected
+            return False
         self.parent[rootY] = rootX
         return True
 
-
-@surveillance_bp.route('/investigate', methods=['POST'])
+@surveillance.route('/investigate', methods=['POST'])  # ✅ This is your endpoint
 def investigate():
     data = request.get_json()
-
     results = []
+
     for network_obj in data:
         network_id = network_obj["networkId"]
         connections = network_obj["network"]
