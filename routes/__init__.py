@@ -1,5 +1,5 @@
 from flask import Flask
-from routes.surveillance import surveillance  # This imports the Blueprint
+from routes.trivia import trivia_bp
 
 app = Flask(__name__)
-app.register_blueprint(surveillance)
+app.register_blueprint(trivia_bp)
