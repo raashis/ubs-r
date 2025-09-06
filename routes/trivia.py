@@ -65,12 +65,12 @@ def duolingo_sort():
         result = [s for _, s in sorted_list]
 
     elif part == 'TWO':
-        parsed = [
-            (*detect_language_and_parse(x), x)
-            for x in unsorted
-        ]
-        parsed.sort(key=lambda t: (t[0], LANGUAGE_PRIORITY.get(t[1], 999)))
-        result = [orig for _, _, _, orig in parsed]
+    parsed = [
+        (*detect_language_and_parse(x), x)
+        for x in unsorted
+    ]
+    parsed.sort(key=lambda t: (t[0], LANGUAGE_PRIORITY.get(t[1], 999)))
+    result = [orig for _, _, orig in parsed]
 
     else:
         return jsonify({'error': 'Part must be "ONE" or "TWO"'}), 400
