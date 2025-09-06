@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict, Counter, deque
 from flask import request, jsonify
-from routes import app  # use the single app instance
+from routes import app
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO)
 
 def would_create_cycle(keep_adj, u, v):
     """
-    If we add u->v, does it create a directed cycle?
-    Check if there's already a path v -> ... -> u in the kept graph.
+    Returns True if adding u->v creates a cycle in the kept graph.
+    BFS from v to see if we can reach u.
     """
     if u == v:
         return True
@@ -18,9 +18,9 @@ def would_create_cycle(keep_adj, u, v):
     seen = {v}
     while q:
         x = q.popleft()
-        if x == u:
-            return True
-        for nxt in keep_adj[x]:
+        for nxt in keep_adj.get(x, []):
+            if nxt == u:
+                return True
             if nxt not in seen:
                 seen.add(nxt)
                 q.append(nxt)
@@ -29,52 +29,59 @@ def would_create_cycle(keep_adj, u, v):
 
 @app.route('/investigate', methods=['POST'])
 def investigate():
-    payload = request.get_json(force=True)  # ensures JSON is parsed
-    networks = payload.get("networks", [])
-    out = {"networks": []}
+    try:
+        payload = request.get_json(force=True)
+        if not payload or "networks" not in payload:
+            return jsonify({"error": "Missing 'networks' field in request"}), 400
 
-    for net in networks:
-        net_id = net.get("networkId")
-        edges = net.get("network", [])
+        networks_input = payload.get("networks", [])
+        output = {"networks": []}
 
-        # Normalize edges as (u, v)
-        E = [(e.get("spy1"), e.get("spy2")) for e in edges if e.get("spy1") and e.get("spy2")]
+        for net in networks_input:
+            net_id = net.get("networkId", "unknown")
+            edges = net.get("network", [])
 
-        # Frequency of targets for deterministic sorting
-        target_freq = Counter(v for _, v in E)
-        # Sort edges: 1) ascending target frequency, 2) source name, 3) target name
-        E_sorted = sorted(E, key=lambda ev: (target_freq[ev[1]], ev[0], ev[1]))
+            # Normalize edges to (spy1, spy2) strings
+            E = []
+            for e in edges:
+                spy1 = e.get("spy1")
+                spy2 = e.get("spy2")
+                if spy1 is None or spy2 is None:
+                    logger.warning(f"Skipping invalid edge in {net_id}: {e}")
+                    continue
+                E.append((str(spy1), str(spy2)))
 
-        indeg = defaultdict(int)
-        outdeg = defaultdict(int)
-        keep_adj = defaultdict(list)
+            # Sort edges: keep edges to rare targets first for deterministic output
+            target_freq = Counter(v for _, v in E)
+            E_sorted = sorted(E, key=lambda ev: (target_freq[ev[1]], ev[0], ev[1]))
 
-        extras = []
+            indeg = defaultdict(int)
+            outdeg = defaultdict(int)
+            keep_adj = defaultdict(list)
+            extras = []
 
-        for (u, v) in E_sorted:
-            # Rule 1: one outgoing per spy
-            if outdeg[u] >= 1:
-                extras.append({"spy1": u, "spy2": v})
-                continue
-            # Rule 2: one incoming per spy
-            if indeg[v] >= 1:
-                extras.append({"spy1": u, "spy2": v})
-                continue
-            # Rule 3: no cycles
-            if would_create_cycle(keep_adj, u, v):
-                extras.append({"spy1": u, "spy2": v})
-                continue
+            for u, v in E_sorted:
+                if outdeg[u] >= 1:
+                    extras.append({"spy1": u, "spy2": v})
+                    continue
+                if indeg[v] >= 1:
+                    extras.append({"spy1": u, "spy2": v})
+                    continue
+                if would_create_cycle(keep_adj, u, v):
+                    extras.append({"spy1": u, "spy2": v})
+                    continue
 
-            # Safe to keep
-            keep_adj[u].append(v)
-            outdeg[u] += 1
-            indeg[v] += 1
+                keep_adj[u].append(v)
+                outdeg[u] += 1
+                indeg[v] += 1
 
-        out["networks"].append({
-            "networkId": net_id,
-            "extraChannels": extras
-        })
+            output["networks"].append({
+                "networkId": net_id,
+                "extraChannels": extras
+            })
 
-        logger.info(f"Processed networkId {net_id}: {len(E)} edges, {len(extras)} extra channels")
+        return jsonify(output)
 
-    return jsonify(out)
+    except Exception as e:
+        logger.exception("Error processing /investigate request")
+        return jsonify({"error": str(e)}), 500
