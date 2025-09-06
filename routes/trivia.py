@@ -18,20 +18,24 @@ LANGUAGE_PRIORITY = {
 
 def detect_language_and_parse(value: str):
     s = value.strip()
+    
     # Arabic numerals
     if s.isdigit():
         return int(s), 'arabic'
-    # Roman numerals via `roman` library (raises if invalid)
+
+    # Roman numerals
     try:
         return roman.fromRoman(s.upper()), 'roman'
     except Exception:
         pass
+
     # English words
     try:
         num = w2n.word_to_num(s.lower().replace('-', ' '))
         return num, 'english'
     except Exception:
         pass
+
     # German numbers using number-parser
     try:
         parsed = parse_number(s, language="de")
@@ -39,16 +43,22 @@ def detect_language_and_parse(value: str):
             return int(parsed), 'german'
     except Exception:
         pass
+
     # Chinese numbers
     try:
         num = cn2an.cn2an(s, "smart")
         if any('\u4e00' <= ch <= '\u9fff' for ch in s):
-            # Distinguish Traditional vs Simplified
-            return num, 'traditional_chinese' if '萬' in s or '億' in s else 'simplified_chinese'
+            # Heuristic for Traditional vs Simplified Chinese
+            if any(trad in s for trad in ['萬', '億', '壹', '貳', '參']):
+                return num, 'traditional_chinese'
+            else:
+                return num, 'simplified_chinese'
     except Exception:
         pass
-    # Fallback: unknown, treat as infinitely large so sorts last
+
+    # Fallback: parsing failed
     return float('inf'), 'unknown'
+
 
 @trivia_bp.route('/duolingo-sort', methods=['POST'])
 def duolingo_sort():
@@ -57,11 +67,11 @@ def duolingo_sort():
     unsorted = data.get('challengeInput', {}).get('unsortedList', [])
 
     if part == 'ONE':
-        sorted_list = sorted(
-            ( (roman.fromRoman(x) if not x.isdigit() else int(x), str(roman.fromRoman(x) if not x.isdigit() else int(x)))
-              for x in unsorted ),
-            key=lambda p: p[0]
-        )
+        sorted_list = []
+        for x in unsorted:
+            val = int(x) if x.isdigit() else roman.fromRoman(x)
+            sorted_list.append((val, str(val)))
+        sorted_list.sort(key=lambda p: p[0])
         result = [s for _, s in sorted_list]
 
     elif part == 'TWO':
@@ -69,9 +79,13 @@ def duolingo_sort():
             (*detect_language_and_parse(x), x)
             for x in unsorted
         ]
+
+        # Uncomment for debugging:
+        # import json
+        # print(json.dumps(parsed, indent=2, ensure_ascii=False))
+
         parsed.sort(key=lambda t: (t[0], LANGUAGE_PRIORITY.get(t[1], 999)))
         result = [orig for _, _, orig in parsed]
-
 
     else:
         return jsonify({'error': 'Part must be "ONE" or "TWO"'}), 400
