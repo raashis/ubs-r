@@ -43,18 +43,19 @@ def investigate():
 
         for edge in connections:
             spy1, spy2 = edge["spy1"], edge["spy2"]
-
             normalized_edge = {
                 "spy1": min(spy1, spy2),
                 "spy2": max(spy1, spy2)
             }
 
+            # keep building spanning tree until n-1 edges chosen
             if len(kept_edges) < needed_edges and uf.union(spy1, spy2):
                 kept_edges.append(normalized_edge)
             else:
+                # every other edge is extra
                 extra_channels.append(normalized_edge)
 
-        # Sort output for determinism
+        # sort for deterministic output
         extra_channels.sort(key=lambda e: (e["spy1"], e["spy2"]))
 
         results.append({
