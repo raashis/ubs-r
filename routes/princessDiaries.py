@@ -7,7 +7,6 @@ from flask import request
 
 logger = logging.getLogger(__name__)
 
-
 def dijkstra(n, graph, src):
     dist = [float("inf")] * n
     dist[src] = 0
@@ -22,7 +21,6 @@ def dijkstra(n, graph, src):
                 heapq.heappush(heap, (dist[v], v))
     return dist
 
-
 def build_distance_matrix(subway):
     graph = defaultdict(list)
     stations = set()
@@ -33,10 +31,8 @@ def build_distance_matrix(subway):
         graph[v].append((u, fee))
         stations.add(u)
         stations.add(v)
-
     n = max(stations) + 1
     return [dijkstra(n, graph, i) for i in range(n)]
-
 
 def weighted_interval(tasks, dist_matrix, start_station):
     import bisect
@@ -75,8 +71,7 @@ def weighted_interval(tasks, dist_matrix, start_station):
 
     return dp[n]
 
-
-@app.route('/princessDiaries', methods=['POST'])
+@app.route('/princess-diaries', methods=['POST'])
 def princess_diaries():
     data = request.get_json()
     tasks = data.get("tasks", [])
@@ -86,7 +81,6 @@ def princess_diaries():
     logger.info(f"Received {len(tasks)} tasks")
 
     dist_matrix = build_distance_matrix(subway)
-
     max_score, min_fee, schedule = weighted_interval(tasks, dist_matrix, start_station)
 
     result = {
