@@ -1,4 +1,5 @@
 # routes/trivia.py
+
 from flask import Blueprint, jsonify
 
 trivia_bp = Blueprint('trivia', __name__)
