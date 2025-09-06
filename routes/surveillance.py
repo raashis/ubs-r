@@ -32,21 +32,34 @@ def investigate():
         connections = network_obj["network"]
 
         uf = UnionFind()
+        nodes = set()
+        for edge in connections:
+            nodes.add(edge["spy1"])
+            nodes.add(edge["spy2"])
+
+        spanning_tree_edges = []
         extra_channels = []
 
+        # Kruskal’s algorithm: try to add edges until spanning tree is built
         for edge in connections:
-            spy1 = edge["spy1"]
-            spy2 = edge["spy2"]
+            spy1, spy2 = edge["spy1"], edge["spy2"]
 
-            # normalize order for consistency
             normalized_edge = {
                 "spy1": min(spy1, spy2),
                 "spy2": max(spy1, spy2)
             }
 
-            # if already connected, this edge is extra
-            if not uf.union(spy1, spy2):
+            if uf.union(spy1, spy2):
+                spanning_tree_edges.append(normalized_edge)
+            else:
                 extra_channels.append(normalized_edge)
+
+        # ✅ IMPORTANT: After building spanning tree, any unused edges are extra
+        # Spanning tree should have exactly len(nodes)-1 edges
+        needed_edges = len(nodes) - 1
+        if len(spanning_tree_edges) > needed_edges:
+            # drop extras beyond needed_edges
+            extra_channels.extend(spanning_tree_edges[needed_edges:])
 
         # sort for deterministic output
         extra_channels.sort(key=lambda e: (e["spy1"], e["spy2"]))
