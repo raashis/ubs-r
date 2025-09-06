@@ -8,11 +8,20 @@ from routes import app
 logger = logging.getLogger(__name__)
 
 
-@app.route('/square', methods=['POST'])
-def evaluate():
+@app.route('/blankety', methods=['POST'])
+def impute_series(series):
+    s = pd.Series(series, dtype="float")
+    # Linear interpolation + fill edges
+    s = s.interpolate(method='linear', limit_direction='both')
+    return s.tolist()
+
+@app.route('/blankety', methods=['POST'])
+def impute():
     data = request.get_json()
-    logging.info("data sent for evaluation {}".format(data))
-    input_value = data.get("input")
-    result = input_value * input_value
-    logging.info("My result :{}".format(result))
-    return json.dumps(result)
+    logger.info("Received data for imputation")
+    series_list = data.get("series", [])
+    
+    imputed = [impute_series(s) for s in series_list]
+    
+    logger.info("Imputation complete")
+    return json.dumps({"answer": imputed})
