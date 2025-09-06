@@ -8,6 +8,12 @@ import re
 # English number word parser
 from word2number import w2n
 
+import roman
+
+def roman_to_int(s):
+    return roman.fromRoman(s)
+
+
 # Language tags for sorting (used in Part TWO)
 LANGUAGE_PRIORITY = {
     'roman': 0,
