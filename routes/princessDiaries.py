@@ -90,7 +90,7 @@ def weighted_interval(tasks, dist_matrix, start_station):
 
 
 
-@app.route('/princess-diaries', methods=['POST'])
+@app.route('/princessDiaries', methods=['POST'])
 def princess_diaries():
     data = request.get_json()
     tasks = data["tasks"]
